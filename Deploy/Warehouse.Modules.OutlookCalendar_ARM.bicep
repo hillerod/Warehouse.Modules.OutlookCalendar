@@ -4,8 +4,8 @@
 param moduleName string = 'OutlookCalendar'
 
 @secure()
-@description('The name of the module. Only use between 3-24 letters or numers, or the Warehouse can\'t function. The functionApp gets the same name followed by the "-resourceGroup.id". The modulename is hard to change later, so try to keep it static. It is used in dataLake and databse as an identifier of data that comes from this app')
-param fTPConnectionString string = ''
+@description('')
+param fTPConnectionString string = 'host=SFTPS.xx.dk;port=22;user=xx;pass=xx;path=/ExchangeBookings;'
 
 
 @description('"Romance Standard Time" is Copenhagen. For other timezones, find them here: https://raw.githubusercontent.com/Bygdrift/Warehouse/master/Docs/TimeZoneIds.csv')
