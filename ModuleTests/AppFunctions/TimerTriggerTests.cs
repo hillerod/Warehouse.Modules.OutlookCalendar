@@ -10,13 +10,13 @@ namespace ModuleTests.AppFunctions
     [TestClass]
     public class TimerTriggerTests
     {
-        public async Task TimerTrigger()
-        {
-            Mock<ILogger> loggerMock = new();
-            var function = new Module.AppFunctions.TimerTrigger();
-            await function.TimerTriggerAsync(default(TimerInfo), loggerMock.Object);
-            var errors = function.App.Log.GetErrorsAndCriticals();
-            Assert.IsTrue(errors.Count() == 0);
-        }
+        //public async Task TimerTrigger()
+        //{
+        //    Mock<ILogger> loggerMock = new();
+        //    var function = new Module.AppFunctions.TimerTrigger();
+        //    await function.TimerTriggerAsync(default(TimerInfo), loggerMock.Object);
+        //    var errors = function.App.Log.GetErrorsAndCriticals();
+        //    Assert.IsTrue(errors.Count() == 0);
+        //}
     }
 }

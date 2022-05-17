@@ -4,7 +4,6 @@ namespace Module
 {
     public class Settings
     {
-        [ConfigSecret(NotSet = NotSet.ThrowError)]
-        public string FTPConnectionString { get; set; }
+        
     }
 }

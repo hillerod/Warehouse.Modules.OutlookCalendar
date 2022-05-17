@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -6,28 +5,37 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using System.Text;
+using Bygdrift.Warehouse;
+using Bygdrift.DataLakeTools;
 
 namespace Module.AppFunctions
 {
-    public static class UploadFile
+    public class UploadFile
     {
+        public AppBase<Settings> App { get; }
+
+        public UploadFile(ILogger<UploadFile> logger) => App = new AppBase<Settings>(logger);
+
+
         [FunctionName(nameof(UploadFile))]
-        public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req, ILogger log)
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            var filesUploaded = 0;
+            var fileNames = "";
 
-            string name = req.Query["name"];
+            if (req.Form.Files != null && req.Form.Files.Count > 0)
+                foreach (var file in req.Form.Files)
+                {
+                    filesUploaded++;
+                    fileNames += file.FileName + ",";
+                    using MemoryStream stream = new();
+                    file.CopyTo(stream);
+                    await App.DataLake.SaveStreamAsync(stream, "raw", file.FileName, FolderStructure.DatePath);
+                }
 
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
-
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
-
-            return new OkObjectResult(responseMessage);
+            App.Log.LogInformation($"Uploaded {filesUploaded} files. Names: {fileNames.Trim(',')}.");
+            return new OkObjectResult($"Uploaded {filesUploaded} files. Names: {fileNames.Trim(',')}.");
         }
     }
 }
