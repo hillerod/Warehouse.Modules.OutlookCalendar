@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.6.11.53198",
-      "templateHash": "3936771281376274193"
+      "templateHash": "7329708440375750736"
     }
   },
   "parameters": {
@@ -20,7 +20,10 @@
     },
     "fTPConnectionString": {
       "type": "secureString",
-      "defaultValue": ""
+      "defaultValue": "",
+      "metadata": {
+        "description": "The name of the module. Only use between 3-24 letters or numers, or the Warehouse can't function. The functionApp gets the same name followed by the \"-resourceGroup.id\". The modulename is hard to change later, so try to keep it static. It is used in dataLake and databse as an identifier of data that comes from this app"
+      }
     },
     "timeZoneId": {
       "type": "string",
@@ -101,10 +104,6 @@
             {
               "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
               "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', format('appstorage{0}', uniqueString(resourceGroup().id)), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', format('appstorage{0}', uniqueString(resourceGroup().id))), '2019-06-01').keys[0].value)]"
-            },
-            {
-              "name": "WEBSITE_RUN_FROM_PACKAGE",
-              "value": null
             }
           ]
         }

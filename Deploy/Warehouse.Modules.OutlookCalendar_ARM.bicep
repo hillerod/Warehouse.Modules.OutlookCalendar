@@ -4,6 +4,7 @@
 param moduleName string = 'OutlookCalendar'
 
 @secure()
+@description('The name of the module. Only use between 3-24 letters or numers, or the Warehouse can\'t function. The functionApp gets the same name followed by the "-resourceGroup.id". The modulename is hard to change later, so try to keep it static. It is used in dataLake and databse as an identifier of data that comes from this app')
 param fTPConnectionString string = ''
 
 
@@ -95,10 +96,10 @@ resource functionApp 'Microsoft.Web/sites@2021-02-01' = {
           name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
           value: appStorageConnectionString
         }
-        {
-          name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: null
-        }
+        // {
+        //   name: 'WEBSITE_RUN_FROM_PACKAGE'
+        //   value: 0
+        // }
         // name: 'WEBSITE_CONTENTSHARE' // will also be auto-generated - https://docs.microsoft.com/en-us/azure/azure-functions/functions-app-settings#website_contentshare
         // WEBSITE_RUN_FROM_PACKAGE will be set to 1 by func azure functionapp publish
       ]
