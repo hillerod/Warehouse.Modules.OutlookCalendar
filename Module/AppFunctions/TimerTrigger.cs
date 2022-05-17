@@ -13,17 +13,17 @@ namespace Module.AppFunctions
         [FunctionName(nameof(TimerTriggerAsync))]
         public async Task TimerTriggerAsync([TimerTrigger("%Setting--ScheduleExpression%")] TimerInfo myTimer, ILogger logger, int? take = null, bool moveFile = false)
         {
-            App.Log.Logger = logger;
-            var ftpService = new Service.FTPService(App);
+            //App.Log.Logger = logger;
+            //var ftpService = new Service.FTPService(App);
 
-            var csvFiles = ftpService.GetData(take);
+            //var csvFiles = ftpService.GetData(take);
 
-            var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, true);
-            var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, csvFiles, true);
-            PartitionBookingsRefine.Refine(App, bookingsRefinedCsv, locationsRefinedCsv, 2, true);
+            //var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, true);
+            //var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, csvFiles, true);
+            //PartitionBookingsRefine.Refine(App, bookingsRefinedCsv, locationsRefinedCsv, 2, true);
 
-            if (moveFile)
-                ftpService.MoveFolderContent("backup");
+            //if (moveFile)
+            //    ftpService.MoveFolderContent("backup");
         }
     }
 }

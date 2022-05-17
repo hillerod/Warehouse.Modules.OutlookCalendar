@@ -3,6 +3,7 @@ using Bygdrift.DataLakeTools;
 using Bygdrift.Warehouse;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Module.Refine
@@ -11,24 +12,24 @@ namespace Module.Refine
     {
         private static readonly Csv csv = new();
 
-        public static async Task<Csv> RefineAsync(AppBase app, IEnumerable<(DateTime Saved, string Name, Csv Csv)> csvFiles, bool saveToServer)
+        public static async Task<Csv> RefineAsync(AppBase app, IEnumerable<KeyValuePair<DateTime, Csv>> csvFiles, bool saveToServer)
         {
             CreateCsv(csvFiles);
             if (saveToServer)
             {
-                await app.DataLake.SaveCsvAsync(csv, "Refined", "Bookings.csv", FolderStructure.Path);
+                await app.DataLake.SaveCsvAsync(csv, "Refined", "Bookings.csv", FolderStructure.DatePath);
                 app.Mssql.MergeCsv(csv, "Bookings", "Id", false, false);
             }
             return csv;
         }
 
-        private static void CreateCsv(IEnumerable<(DateTime Saved, string Name, Csv Csv)> csvFiles)
+        private static void CreateCsv(IEnumerable<KeyValuePair<DateTime, Csv>> csvFiles)
         {
             csv.AddHeaders("Id, Start, End, Participants, Name, Capacity, Mail, Factor");
 
-            foreach (var item in csvFiles)
+            foreach (var item in csvFiles.OrderBy(o=> o.Key))
             {
-                var ftpCsv = item.Csv;
+                var ftpCsv = item.Value;
                 var toRow = csv.RowLimit.Max;
                 for (int fromRow = ftpCsv.RowLimit.Min; fromRow < ftpCsv.RowLimit.Max; fromRow++)
                 {
@@ -50,32 +51,32 @@ namespace Module.Refine
         }
 
 
-        private static void InsertId(Csv csv, int fromRow, int toCol, int toRow)
+        private static void InsertId(Csv ftpCsv, int fromRow, int toCol, int toRow)
         {
-            var start = DateTime.Parse(csv.GetRecord(fromRow,1).ToString().Replace('.', ':')).ToLocalTime().ToString("yyMMddhhmm");
+            var start = DateTime.Parse(ftpCsv.GetRecord(fromRow,1).ToString().Replace('.', ':')).ToLocalTime().ToString("yyMMddhhmm");
             //var end = DateTime.Parse(csv.GetRecord(1, fromRow).ToString().Replace('.', ':')).ToLocalTime().ToString("yyMMddhhmm");
-            var mail = csv.GetRecord(fromRow, 8).ToString().ToUpper().Replace("@HILLEROD.DK", "");
+            var mail = ftpCsv.GetRecord(fromRow, 8).ToString().ToUpper().Replace("@HILLEROD.DK", "");
             csv.AddRecord(toRow, toCol, start + "-" + mail);
         }
 
-        private static void InsertDate(Csv csv, int fromCol, int fromRow, int toCol, int toRow)
+        private static void InsertDate(Csv ftpCsv, int fromCol, int fromRow, int toCol, int toRow)
         {
-            if (csv.TryGetRecord(fromRow, fromCol, out object val))
+            if (ftpCsv.TryGetRecord(fromRow, fromCol, out object val))
             {
                 var date = DateTime.Parse(val.ToString().Replace('.', ':')).ToLocalTime().ToString("s");
                 csv.AddRecord(toRow, toCol, date);
             }
         }
 
-        private static void InsertValue(Csv csv, int fromCol, int fromRow, int toCol, int toRow, bool toUpper = false)
+        private static void InsertValue(Csv ftpCsv, int fromCol, int fromRow, int toCol, int toRow, bool toUpper = false)
         {
-            if (csv.TryGetRecord(fromRow, fromCol, out object val))
+            if (ftpCsv.TryGetRecord(fromRow, fromCol, out object val))
                 csv.AddRecord(toRow, toCol, toUpper ? val.ToString().ToUpper() : val);
         }
 
         private static void UpdateCapacity(string headerNameLookup, string lookup, string writeIntoHeader, int capacity)
         {
-            var rows = csv.GetRowsRecords(headerNameLookup, lookup);
+            var rows = csv.GetRowsRecords(headerNameLookup, true,  lookup);
             csv.TryGetColId(writeIntoHeader, out int col);
 
             foreach (var row in rows)
@@ -84,10 +85,9 @@ namespace Module.Refine
 
         private static void AddFactorCol(string headerName, string headerNameNumerator, string headerNameDenominator, int col) //Numerator=tæller, denominator=nævner
         {
-            //var numerators = csv.GetRecordCol(headerNameNumerator).Records;
-            var numerators = csv.GetColRecords(headerNameNumerator);
-            //var denominators = csv.GetRecordCol(headerNameDenominator).Records;
-            var denominators = csv.GetColRecords(headerNameDenominator);
+            var numerators = csv.GetColRecords(headerNameNumerator, false);
+            var denominators = csv.GetColRecords(headerNameDenominator, false);
+
             foreach (var denimonatorRecord in denominators)
             {
                 if (double.TryParse(denimonatorRecord.Value.ToString(), out double denominator) && double.TryParse(numerators[denimonatorRecord.Key].ToString(), out double numerator))

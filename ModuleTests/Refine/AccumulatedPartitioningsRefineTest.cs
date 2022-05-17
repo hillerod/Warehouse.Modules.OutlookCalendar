@@ -3,6 +3,7 @@ using Bygdrift.Warehouse;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Module.Refine;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace ModuleTests.Refine
 {
@@ -10,13 +11,13 @@ namespace ModuleTests.Refine
     public class AccumulatedPartitioningsRefineTest
     {
         [TestMethod]
-        public void GetDataPerHourTest()
+        public async Task GetDataPerHourTest()
         {
             var input = LoadAccumulatedBookingsCsv();
             var update = new CsvUpdate(input, true, "Start", "End", "Mail");
             update.Csv.ToCsvFile(Path.Combine(ImporterTest.BasePath, "Files", "Out", "accuTest.csv"));
             var app = new AppBase();
-            var accumulatedBookingsRefineCsv = PartitionBookingsRefine.Refine(app, input, LoadLocations(), 2, false);
+            var accumulatedBookingsRefineCsv = await PartitionBookingsRefine.RefineAsync(app, input, LoadLocations(), 2, false);
             accumulatedBookingsRefineCsv.ToCsvFile(Path.Combine(ImporterTest.BasePath, "Files", "Out", "accuTest.csv"));
         }
 
@@ -35,6 +36,5 @@ namespace ModuleTests.Refine
             var csv = new Csv().FromCsvStream(stream);
             return csv;
         }
-
     }
 }

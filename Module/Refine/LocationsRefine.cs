@@ -71,6 +71,7 @@ namespace Module.Refine
                 "kantinen-moedecenter@hillerod.dk,100,Trollesmindealle 27,Stuen,Rådhus,Kantinen,Room,RÅD0_Kantinen",
                 "leen-moedecenter@hillerod.dk,12,Trollesmindealle 27,Stuen,Rådhus,Leen,Room,RÅD0_Leen",
                 "mejeriet-stueetagen@hillerod.dk,8,Trollesmindealle 27,Stuen,Rådhus,Mejeriet,Room,RÅD0_Mejeriet",
+                "vindharpen-moedecenter@hillerod.dk,8,Trollesmindealle 27,Stuen,Rådhus,Vindharpen,Room,RÅD0_Vindharpen",
                 "ploven-moedecenter@hillerod.dk,8,Trollesmindealle 27,Stuen,Rådhus,Ploven,Room,RÅD0_Ploven",
                 "seglet-moedecenter@hillerod.dk,10,Trollesmindealle 27,Stuen,Rådhus,Seglet,Room,RÅD0_Seglet",
                 "tromlen-moedecenter@hillerod.dk,4,Trollesmindealle 27,Stuen,Rådhus,Tromlen,Room,RÅD0_Tromlen",

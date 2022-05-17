@@ -1,8 +1,10 @@
 ﻿using Bygdrift.CsvTools;
+using Bygdrift.DataLakeTools;
 using Bygdrift.Warehouse;
 using Module.Refine.PartitionBookings;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Module.Refine
 {
@@ -10,11 +12,15 @@ namespace Module.Refine
     {
         private static Csv csv = new();
 
-        public static Csv Refine(AppBase app, Csv bookings, Csv locations, int years, bool saveToServer)
+        public static async Task<Csv> RefineAsync(AppBase app, Csv bookings, Csv locations, int years, bool saveToServer)
         {
             CreateCsv(bookings, locations, years);
+
             if (saveToServer)
+            {
                 app.Mssql.MergeCsv(csv, "PartitionBookings", "Id", false, false);
+                await app.DataLake.SaveCsvAsync(csv, "Refined", "PartitionBookings.csv", FolderStructure.DatePath);
+            }
 
             return csv;
         }
@@ -39,8 +45,9 @@ namespace Module.Refine
         /// </summary>
         private static Csv FilteredCsv(Csv bookings, Csv locations)
         {
-            var mails = locations.GetColRecords("Type", "Mail", "Room").Select(o => o.Value).ToArray();
-            return bookings.FilterRows("Mail", mails);
+            var mails = locations.GetColRecords("Type", "Mail", "Room", true).Select(o => o.Value).ToArray();
+            var res =  bookings.FilterRows("Mail", true, mails);
+            return res;
         }
     }
 }

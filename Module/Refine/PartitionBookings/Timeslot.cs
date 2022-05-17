@@ -6,6 +6,15 @@ namespace Module.Refine.PartitionBookings
     {
         private DateTime _start;
 
+        public Timeslot(DateTime from, DateTime to, double minutes, double percent, double factor)
+        {
+            Start = from;
+            End = to;
+            Minutes = minutes;
+            Percent = percent;
+            Factor = factor;
+        }
+
         public DateTime Start
         {
             get { return _start; }
@@ -37,8 +46,6 @@ namespace Module.Refine.PartitionBookings
             get { return (TimeSpan)(_duration ??= _duration = End - Start); }
         }
 
-        //public string GroupId { get; private set; }
-
         public double Minutes { get; private set; }
 
         public double Percent { get; private set; }
@@ -49,16 +56,5 @@ namespace Module.Refine.PartitionBookings
             End = to;
             Factor = factor;
         }
-
-        public Timeslot(DateTime from, DateTime to, double minutes, double percent, double factor)
-        {
-            //GroupId = groupId;
-            Start = from;
-            End = to;
-            Minutes = minutes;
-            Percent = percent;
-            Factor = factor;
-        }
-
     }
 }

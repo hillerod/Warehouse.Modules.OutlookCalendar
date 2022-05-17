@@ -1,0 +1,15 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "ModuleName": {
+            "value": "OutlookCalendar"
+        },
+        "FTPConnectionString": {
+            "value": "host=SFTPS.xx.dk;port=22;user=xx;pass=xx;path=/ExchangeBookings;"
+        },
+        "TimeZoneId": {
+            "value": "Romance Standard Time"
+        }
+    }
+}
