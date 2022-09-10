@@ -1,10 +1,12 @@
-﻿using Bygdrift.CsvTools;
+﻿using Bygdrift.Tools.CsvTool;
+using Bygdrift.Tools.DataLakeTool;
 using Bygdrift.Warehouse;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Module;
 using Module.Refine;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,90 +22,52 @@ using System.Threading.Tasks;
 namespace ModuleTests
 {
     [TestClass]
-    public class ImporterTest
+    public class ImporterTests : BaseTests
     {
-        /// <summary>Path to project base</summary>
-        public static readonly string BasePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..\\..\\..\\"));
+        public ImporterTests() : base(true)
+        {
 
-        public AppBase<Settings> App = new();
-
-        //[TestMethod]
-        //public async Task OrderCsvsOnDataLakeStructure()
-        //{
-        //    var directoryPath = Path.Combine(BasePath, "Files", "In", "FromFtp");
-        //    var filePaths = Directory.GetFiles(directoryPath, "*.csv", SearchOption.AllDirectories);
-        //    foreach (var path in filePaths)
-        //    {
-        //        var name = Path.GetFileName(path);
-        //        var date = DateTime.Parse(name.Substring(0, 10));
-
-        //        var toFolder = Path.Combine(BasePath, "Files", "Out", "Dir", date.ToString("yyyy"), date.ToString("MM"), date.ToString("dd"));
-        //        if (!Directory.Exists(toFolder))
-        //            Directory.CreateDirectory(toFolder);
-
-        //        var toFile = Path.Combine(toFolder, name);
-
-        //        File.Copy(path, toFile);
-        //    }
-        //}
+        }
 
         [TestMethod]
         public async Task TestRunModuleFromDataLake()
         {
-            //var from = DateTime.Now.AddDays(-1);
-            var from = new DateTime(2021, 6, 1);
-            var to = from.AddYears(1);
+            var csvFiles2 = new Csv("File, Recieved, Imported").AddRow("Hej", App.LoadedUtc, null).AddRow("Hej2", App.LoadedUtc, App.LoadedLocal);
+            App.Mssql.MergeCsv(csvFiles2, "ImportedFiles", "File");
+
+            var a = App.Mssql.GetAsCsvQuery($"SELECT * FROM [{App.ModuleName}].[ImportedFiles] WHERE Imported IS NULL");
+
+
+
+
+            var start = DateTime.Now;
             bool saveToServer = true;
-            bool saveLocal = true;
-            IEnumerable<KeyValuePair<DateTime, Csv>> csvFiles = App.DataLake.GetCsvs("Raw", from, to, true).ToList();
-            //var csvFiles = useDataFromService ? new Module.Service.FTPService(App).GetData(take) : LoadAllCsv(take);
+            var csvFiles = GetLocalCsvs(Path.Combine(BasePath, "Files", "In", "raw")).OrderBy(o => o.Date);
 
-            var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, saveToServer);
-            var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App,  csvFiles, saveToServer);
-            var partitionsRefinedCsv = await PartitionBookingsRefine.RefineAsync(App, bookingsRefinedCsv, locationsRefinedCsv, 3, saveToServer);
+            var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, true);
 
-            var errors = App.Log.GetErrorsAndCriticals();
-            Assert.IsFalse(errors.Any());
-
-            if (saveLocal)
+            foreach (var monthGroup in csvFiles.GroupBy(o => o.Date.ToString("yy-MM")))
             {
-                locationsRefinedCsv.ToCsvFile(Path.Combine(BasePath, "Files", "Out", "Locations.csv"));
-                bookingsRefinedCsv.ToCsvFile(Path.Combine(BasePath, "Files", "Out", "bookingsRefined.csv"));
-                partitionsRefinedCsv.ToCsvFile(Path.Combine(BasePath, "Files", "Out", "PartitionsRefined.csv"));
+                Trace.WriteLine($"Group {monthGroup.Key}. Elapsed {DateTime.Now.Subtract(start).TotalSeconds}:");
+                var files = new List<KeyValuePair<DateTime, Csv>>();
+                foreach (var item in monthGroup)
+                {
+                    var csv = new Csv().FromCsvFile(item.Path);
+                    files.Add(new KeyValuePair<DateTime, Csv>(item.Date, csv));
+                }
+
+                Trace.WriteLine($"\tBookings...");
+                var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, files, locationsRefinedCsv, saveToServer);
+                Trace.WriteLine($"\tPartitions...");
+                await PartitionBookingsRefine.RefineAsync(App, bookingsRefinedCsv, saveToServer);
+                var errors = App.Log.GetErrorsAndCriticals();
+                Assert.IsFalse(errors.Any());
             }
         }
 
-
-        //[TestMethod]
-        //public async Task TestRunModule()
-        //{
-        //    int? take = 1;
-        //    bool saveToServer = false;
-        //    bool saveLocal = true;
-        //    bool useDataFromService = false;
-
-        //    var csvFiles = LoadAllCsv(take);
-        //    //var csvFiles = useDataFromService ? new Module.Service.FTPService(App).GetData(take) : LoadAllCsv(take);
-
-        //    var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, saveToServer);
-        //    var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, csvFiles, saveToServer);
-        //    var partitionsRefinedCsv = PartitionBookingsRefine.RefineAsync(App, bookingsRefinedCsv, locationsRefinedCsv, 2, saveToServer);
-
-        //    var errors = App.Log.GetErrorsAndCriticals();
-        //    Assert.IsFalse(errors.Any());
-
-        //    if (saveLocal)
-        //    {
-        //        locationsRefinedCsv.ToCsvFile(Path.Combine(BasePath, "Files", "Out", "Locations.csv"));
-        //        bookingsRefinedCsv.ToCsvFile(Path.Combine(BasePath, "Files", "Out", "bookingsRefined.csv"));
-        //        partitionsRefinedCsv.ToCsvFile(Path.Combine(BasePath, "Files", "Out", "PartitionsRefined.csv"));
-        //    }
-        //}
-
-        private static List<KeyValuePair<DateTime, Csv>> LoadAllCsv(int? take = null)
+        private static IEnumerable<(DateTime Date, string Path)> GetLocalCsvs(string directoryPath, int? take = null)
         {
-            var res = new List<KeyValuePair<DateTime, Csv>>();
-            var directoryPath = Path.Combine(BasePath, "Files", "In", "FromFtp");
+            var res = new List<(DateTime Date, string Path)>();
             var filePaths = Directory.GetFiles(directoryPath, "*.csv", SearchOption.AllDirectories);
             var counter = 0;
             foreach (var path in filePaths)
@@ -111,11 +75,9 @@ namespace ModuleTests
                 if (take != null && counter == take)
                     break;
 
-                var saved = File.GetLastWriteTime(path);
                 var name = Path.GetFileName(path);
-                using var stream = new FileStream(path, FileMode.Open);
-                var csv = new Csv().FromCsvStream(stream);
-                res.Add(new KeyValuePair<DateTime, Csv>(saved, csv));
+                var date = DateTime.Parse(name.Substring(0, 10));
+                res.Add((date, path));
                 counter++;
             }
             return res;

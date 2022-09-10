@@ -1,29 +1,53 @@
-//using Bygdrift.Warehouse;
-//using Microsoft.Azure.WebJobs;
-//using Microsoft.Extensions.Logging;
-//using Module.Refine;
-//using System.Threading.Tasks;
+using Bygdrift.Tools.CsvTool;
+using Bygdrift.Tools.DataLakeTool;
+using Bygdrift.Warehouse;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Extensions.Logging;
+using Module.Refine;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-//namespace Module.AppFunctions
-//{
-//    public class TimerTrigger
-//    {
-//        public AppBase<Settings> App = new();
+namespace Module.AppFunctions
+{
+    public class TimerTrigger
+    {
+        public AppBase<Settings> App { get; }
 
-//        [FunctionName(nameof(TimerTriggerAsync))]
-//        public async Task TimerTriggerAsync([TimerTrigger("%Setting--ScheduleExpression%")] TimerInfo myTimer, ILogger logger, int? take = null, bool moveFile = false)
-//        {
-//            //App.Log.Logger = logger;
-//            //var ftpService = new Service.FTPService(App);
+        public TimerTrigger(ILogger<UploadFile> logger) => App = new AppBase<Settings>(logger);
 
-//            //var csvFiles = ftpService.GetData(take);
+        [FunctionName(nameof(TimerTriggerAsync))]
+        public async Task TimerTriggerAsync([TimerTrigger("%Setting--ScheduleExpression%")] TimerInfo myTimer)
+        {
+            var csvUnloadedFiles = App.Mssql.GetAsCsvQuery($"SELECT [Path] FROM [{App.ModuleName}].[ImportedFiles] WHERE Imported IS NULL");
+            if(csvUnloadedFiles.RowCount == 0)
+            {
+                App.Log.LogInformation("No files found for upload i database log");
+                return;
+            }
 
-//            //var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, true);
-//            //var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, csvFiles, true);
-//            //PartitionBookingsRefine.Refine(App, bookingsRefinedCsv, locationsRefinedCsv, 2, true);
+            var files = new List<KeyValuePair<DateTime, Csv>>();
+            for (int r = csvUnloadedFiles.RowLimit.Min; r < csvUnloadedFiles.RowLimit.Max; r++)
+            {
+                var name = csvUnloadedFiles.GetRecord<string>(r, "File");
+                var path = csvUnloadedFiles.GetRecord<string>(r, "Path");
+                var Received = csvUnloadedFiles.GetRecord<DateTime>(r, "Received");
+                if(App.DataLake.GetCsv(path, name, FolderStructure.DatePath, out Csv val ))
+                    files.Add(new KeyValuePair<DateTime, Csv>(Received, val));
+            }
 
-//            //if (moveFile)
-//            //    ftpService.MoveFolderContent("backup");
-//        }
-//    }
-//}
+            if (files.Any())
+            {
+                var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, true);
+                var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, files, locationsRefinedCsv, true);
+                await PartitionBookingsRefine.RefineAsync(App, bookingsRefinedCsv, true);
+
+                for (int r = csvUnloadedFiles.RowLimit.Min; r < csvUnloadedFiles.RowLimit.Max; r++)
+                    csvUnloadedFiles.AddRecord(r, "Imported", App.LoadedUtc);
+
+                App.Mssql.MergeCsv(csvUnloadedFiles, "ImportedFiles", "File");
+            }
+        }
+    }
+}

@@ -5,9 +5,9 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System.Text;
 using Bygdrift.Warehouse;
-using Bygdrift.DataLakeTools;
+using Bygdrift.Tools.DataLakeTool;
+using Bygdrift.Tools.CsvTool;
 
 namespace Module.AppFunctions
 {
@@ -16,7 +16,6 @@ namespace Module.AppFunctions
         public AppBase<Settings> App { get; }
 
         public UploadFile(ILogger<UploadFile> logger) => App = new AppBase<Settings>(logger);
-
 
         [FunctionName(nameof(UploadFile))]
         public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req)
@@ -31,7 +30,9 @@ namespace Module.AppFunctions
                     fileNames += file.FileName + ",";
                     using MemoryStream stream = new();
                     file.CopyTo(stream);
-                    await App.DataLake.SaveStreamAsync(stream, "raw", file.FileName, FolderStructure.DatePath);
+                    var path = await App.DataLake.SaveStreamAsync(stream, "Raw", file.FileName, FolderStructure.DatePath);
+                    var csv = new Csv("File, Path, Received, Imported").AddRow(file.FileName, path, App.LoadedUtc, null);
+                    App.Mssql.MergeCsv(csv, "ImportedFiles", "File");
                 }
 
             App.Log.LogInformation($"Uploaded {filesUploaded} files. Names: {fileNames.Trim(',')}.");

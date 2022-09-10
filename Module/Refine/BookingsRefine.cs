@@ -1,5 +1,5 @@
-﻿using Bygdrift.CsvTools;
-using Bygdrift.DataLakeTools;
+﻿using Bygdrift.Tools.CsvTool;
+using Bygdrift.Tools.DataLakeTool;
 using Bygdrift.Warehouse;
 using System;
 using System.Collections.Generic;
@@ -10,26 +10,28 @@ namespace Module.Refine
 {
     public class BookingsRefine
     {
-        private static readonly Csv csv = new();
+        private static Csv csv;
 
-        public static async Task<Csv> RefineAsync(AppBase app, IEnumerable<KeyValuePair<DateTime, Csv>> csvFiles, bool saveToServer)
+        public static async Task<Csv> RefineAsync(AppBase app, IEnumerable<KeyValuePair<DateTime, Csv>> csvFiles, Csv locations, bool saveToServer)
         {
-            CreateCsv(csvFiles);
-            if (saveToServer)
+            CreateCsv(csvFiles, locations);
+            if (saveToServer && csvFiles.Any())
             {
+                app.LoadedLocal = csvFiles.Max(o => o.Key);
                 await app.DataLake.SaveCsvAsync(csv, "Refined", "Bookings.csv", FolderStructure.DatePath);
                 app.Mssql.MergeCsv(csv, "Bookings", "Id", false, false);
             }
             return csv;
         }
 
-        private static void CreateCsv(IEnumerable<KeyValuePair<DateTime, Csv>> csvFiles)
+        private static void CreateCsv(IEnumerable<KeyValuePair<DateTime, Csv>> csvFiles, Csv locations)
         {
-            csv.AddHeaders("Id, Start, End, Participants, Name, Capacity, Mail, Factor");
-
-            foreach (var item in csvFiles.OrderBy(o=> o.Key))
+            csv = new Csv("Id, Start, End, Participants, Name, Capacity, Mail, Factor");
+            foreach (var item in csvFiles.OrderBy(o => o.Key))
             {
-                var ftpCsv = item.Value;
+                var ftpCsv = FilteredCsv(item.Value, locations);
+                //ftpCsv.Config.DateFormats.Add("yyyy-M-d H:m:sZ");
+
                 var toRow = csv.RowLimit.Max;
                 for (int fromRow = ftpCsv.RowLimit.Min; fromRow < ftpCsv.RowLimit.Max; fromRow++)
                 {
@@ -50,10 +52,20 @@ namespace Module.Refine
             csv.RemoveRedundantRows("Id", false);
         }
 
+        /// <summary>
+        /// Filters out all irelevant calendars like vehicles and assets, so it's only Room:
+        /// </summary>
+        private static Csv FilteredCsv(Csv bookings, Csv locations)
+        {
+            var mails = locations.GetColRecords("Type", "Mail", "Room", true).Select(o => o.Value).ToArray();
+            var res = bookings.FilterRows("Mailadresse", true, mails);
+            return res;
+        }
 
         private static void InsertId(Csv ftpCsv, int fromRow, int toCol, int toRow)
         {
-            var start = DateTime.Parse(ftpCsv.GetRecord(fromRow,1).ToString().Replace('.', ':')).ToLocalTime().ToString("yyMMddhhmm");
+            //var start = ftpCsv.GetRecord<DateTime>(fromRow, 1).ToLocalTime().ToString("yyMMddhhmm");
+            var start = DateTime.Parse(ftpCsv.GetRecord(fromRow, 1).ToString().Replace('.', ':')).ToLocalTime().ToString("yyMMddhhmm");
             //var end = DateTime.Parse(csv.GetRecord(1, fromRow).ToString().Replace('.', ':')).ToLocalTime().ToString("yyMMddhhmm");
             var mail = ftpCsv.GetRecord(fromRow, 8).ToString().ToUpper().Replace("@HILLEROD.DK", "");
             csv.AddRecord(toRow, toCol, start + "-" + mail);
@@ -76,7 +88,7 @@ namespace Module.Refine
 
         private static void UpdateCapacity(string headerNameLookup, string lookup, string writeIntoHeader, int capacity)
         {
-            var rows = csv.GetRowsRecords(headerNameLookup, true,  lookup);
+            var rows = csv.GetRowsRecords(headerNameLookup, true, lookup);
             csv.TryGetColId(writeIntoHeader, out int col);
 
             foreach (var row in rows)
