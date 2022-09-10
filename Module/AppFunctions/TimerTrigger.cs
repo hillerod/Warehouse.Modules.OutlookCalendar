@@ -19,7 +19,7 @@ namespace Module.AppFunctions
         public TimerTrigger(ILogger<UploadFile> logger) => App = new AppBase<Settings>(logger);
 
         [FunctionName(nameof(TimerTriggerAsync))]
-        public async Task TimerTriggerAsync([TimerTrigger("%Setting--ScheduleExpression%")] TimerInfo myTimer)
+        public async Task TimerTriggerAsync([TimerTrigger("%ScheduleExpression%")] TimerInfo myTimer)
         {
             var csvUnloadedFiles = App.Mssql.GetAsCsvQuery($"SELECT [Path] FROM [{App.ModuleName}].[ImportedFiles] WHERE Imported IS NULL");
             if(csvUnloadedFiles.RowCount == 0)
