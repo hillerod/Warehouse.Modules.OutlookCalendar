@@ -24,23 +24,32 @@ namespace ModuleTests
     [TestClass]
     public class ImporterTests : BaseTests
     {
-        public ImporterTests() : base(true)
+        public ImporterTests() : base(false)
         {
 
         }
 
         [TestMethod]
+        public void GetUndreadFiles()
+        {
+            var csvUnloadedFiles = App.Mssql.GetAsCsvQuery($"SELECT * FROM [{App.ModuleName}].[ImportedFiles] WHERE Imported IS NULL");
+
+            var files = new List<KeyValuePair<DateTime, Csv>>();
+            for (int r = csvUnloadedFiles.RowLimit.Min; r <= csvUnloadedFiles.RowLimit.Max; r++)
+            {
+                var name = csvUnloadedFiles.GetRecord<string>(r, "File");
+                var path = Path.GetDirectoryName(csvUnloadedFiles.GetRecord<string>(r, "Path"));
+                var Received = csvUnloadedFiles.GetRecord<DateTime>(r, "Received");
+                if (App.DataLake.GetCsv(path, name, FolderStructure.Path, out Csv val))
+                    files.Add(new KeyValuePair<DateTime, Csv>(Received, val));
+            }
+        }
+
+
+        [TestMethod]
         public async Task TestRunModuleFromDataLake()
         {
-            var csvFiles2 = new Csv("File, Recieved, Imported").AddRow("Hej", App.LoadedUtc, null).AddRow("Hej2", App.LoadedUtc, App.LoadedLocal);
-            App.Mssql.MergeCsv(csvFiles2, "ImportedFiles", "File");
-
-            var a = App.Mssql.GetAsCsvQuery($"SELECT * FROM [{App.ModuleName}].[ImportedFiles] WHERE Imported IS NULL");
-
-
-
-
-            var start = DateTime.Now;
+            var startClock = DateTime.Now;
             bool saveToServer = true;
             var csvFiles = GetLocalCsvs(Path.Combine(BasePath, "Files", "In", "raw")).OrderBy(o => o.Date);
 
@@ -48,7 +57,7 @@ namespace ModuleTests
 
             foreach (var monthGroup in csvFiles.GroupBy(o => o.Date.ToString("yy-MM")))
             {
-                Trace.WriteLine($"Group {monthGroup.Key}. Elapsed {DateTime.Now.Subtract(start).TotalSeconds}:");
+                Trace.WriteLine($"Group {monthGroup.Key}. Elapsed {DateTime.Now.Subtract(startClock).TotalSeconds}:");
                 var files = new List<KeyValuePair<DateTime, Csv>>();
                 foreach (var item in monthGroup)
                 {

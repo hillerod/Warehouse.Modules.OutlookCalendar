@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Module.Refine;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -28,10 +29,10 @@ namespace Module.AppFunctions
             }
 
             var files = new List<KeyValuePair<DateTime, Csv>>();
-            for (int r = csvUnloadedFiles.RowLimit.Min; r < csvUnloadedFiles.RowLimit.Max; r++)
+            for (int r = csvUnloadedFiles.RowLimit.Min; r <= csvUnloadedFiles.RowLimit.Max; r++)
             {
                 var name = csvUnloadedFiles.GetRecord<string>(r, "File");
-                var path = csvUnloadedFiles.GetRecord<string>(r, "Path");
+                var path = Path.GetDirectoryName(csvUnloadedFiles.GetRecord<string>(r, "Path"));
                 var Received = csvUnloadedFiles.GetRecord<DateTime>(r, "Received");
                 if(App.DataLake.GetCsv(path, name, FolderStructure.DatePath, out Csv val ))
                     files.Add(new KeyValuePair<DateTime, Csv>(Received, val));
@@ -43,11 +44,13 @@ namespace Module.AppFunctions
                 var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, files, locationsRefinedCsv, true);
                 await PartitionBookingsRefine.RefineAsync(App, bookingsRefinedCsv, true);
 
-                for (int r = csvUnloadedFiles.RowLimit.Min; r < csvUnloadedFiles.RowLimit.Max; r++)
+                for (int r = csvUnloadedFiles.RowLimit.Min; r <= csvUnloadedFiles.RowLimit.Max; r++)
                     csvUnloadedFiles.AddRecord(r, "Imported", App.LoadedUtc);
 
                 App.Mssql.MergeCsv(csvUnloadedFiles, "ImportedFiles", "File");
             }
+
+            App.Log.LogInformation($"Imported {files.Count} files.");
         }
     }
 }
