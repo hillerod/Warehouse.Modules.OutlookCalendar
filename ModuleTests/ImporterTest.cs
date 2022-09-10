@@ -32,7 +32,11 @@ namespace ModuleTests
         [TestMethod]
         public void GetUndreadFiles()
         {
-            var csvUnloadedFiles = App.Mssql.GetAsCsvQuery($"SELECT * FROM [{App.ModuleName}].[ImportedFiles] WHERE Imported IS NULL");
+            //SetFile:
+            var csv = new Csv("File, Path, Received, Imported, IsImported").AddRow("file", "path", App.LoadedUtc, new DateTime(1900, 1, 1), false);
+            App.Mssql.MergeCsv(csv, "ImportedFiles", "File");
+
+            var csvUnloadedFiles = App.Mssql.GetAsCsvQuery($"SELECT * FROM [{App.ModuleName}].[ImportedFiles] WHERE Imported = 0");
 
             var files = new List<KeyValuePair<DateTime, Csv>>();
             for (int r = csvUnloadedFiles.RowLimit.Min; r <= csvUnloadedFiles.RowLimit.Max; r++)

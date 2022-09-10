@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Bygdrift.Warehouse;
 using Bygdrift.Tools.DataLakeTool;
 using Bygdrift.Tools.CsvTool;
+using System;
 
 namespace Module.AppFunctions
 {
@@ -31,7 +32,7 @@ namespace Module.AppFunctions
                     using MemoryStream stream = new();
                     file.CopyTo(stream);
                     var path = await App.DataLake.SaveStreamAsync(stream, "Raw", file.FileName, FolderStructure.DatePath);
-                    var csv = new Csv("File, Path, Received, Imported").AddRow(file.FileName, path, App.LoadedUtc, null);
+                    var csv = new Csv("File, Path, Received, Imported, IsImported").AddRow(file.FileName, path, App.LoadedUtc, new DateTime(1900, 1, 1), false);
                     App.Mssql.MergeCsv(csv, "ImportedFiles", "File");
                 }
 
