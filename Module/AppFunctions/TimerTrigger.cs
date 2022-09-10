@@ -19,9 +19,15 @@ namespace Module.AppFunctions
         public TimerTrigger(ILogger<UploadFile> logger) => App = new AppBase<Settings>(logger);
 
         [FunctionName(nameof(TimerTriggerAsync))]
-        public async Task TimerTriggerAsync([TimerTrigger("%ScheduleExpression%")] TimerInfo myTimer)
+        public async Task TimerTriggerAsync([TimerTrigger("%ScheduleExpression%"
+#if DEBUG
+            ,RunOnStartup = true
+#endif
+            )] TimerInfo timerInfo)
         {
-            var csvUnloadedFiles = App.Mssql.GetAsCsvQuery($"SELECT [Path] FROM [{App.ModuleName}].[ImportedFiles] WHERE Imported IS NULL");
+            App.LoadedUtc = DateTime.UtcNow;
+
+            var csvUnloadedFiles = App.Mssql.GetAsCsvQuery($"SELECT * FROM [{App.ModuleName}].[ImportedFiles] WHERE Imported IS NULL");
             if(csvUnloadedFiles.RowCount == 0)
             {
                 App.Log.LogInformation("No files found for upload i database log");
@@ -34,7 +40,7 @@ namespace Module.AppFunctions
                 var name = csvUnloadedFiles.GetRecord<string>(r, "File");
                 var path = Path.GetDirectoryName(csvUnloadedFiles.GetRecord<string>(r, "Path"));
                 var Received = csvUnloadedFiles.GetRecord<DateTime>(r, "Received");
-                if(App.DataLake.GetCsv(path, name, FolderStructure.DatePath, out Csv val ))
+                if(App.DataLake.GetCsv(path, name, FolderStructure.Path, out Csv val ))
                     files.Add(new KeyValuePair<DateTime, Csv>(Received, val));
             }
 
