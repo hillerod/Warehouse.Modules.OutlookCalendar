@@ -32,8 +32,11 @@ namespace Module.AppFunctions
                     using MemoryStream stream = new();
                     file.CopyTo(stream);
                     var path = await App.DataLake.SaveStreamAsync(stream, "Raw", file.FileName, FolderStructure.DatePath);
-                    var csv = new Csv("File, Path, Received, Imported, IsImported").AddRow(file.FileName, path, App.LoadedUtc, new DateTime(1900, 1, 1), false);
-                    App.Mssql.MergeCsv(csv, "ImportedFiles", "File");
+                    if (file.FileName.ToLower().EndsWith("csv"))
+                    {
+                        var csv = new Csv("File, Path, Received, Imported, IsImported").AddRow(file.FileName, path, App.LoadedUtc, new DateTime(1900, 1, 1), false);
+                        App.Mssql.MergeCsv(csv, "ImportedFiles", "File");
+                    }
                 }
 
             App.Log.LogInformation($"Uploaded {filesUploaded} files. Names: {fileNames.Trim(',')}.");

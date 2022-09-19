@@ -1,5 +1,4 @@
-﻿using Bygdrift.Tools.LogTool;
-using Bygdrift.Tools.MssqlTool;
+﻿using Bygdrift.Tools.MssqlTool;
 using Bygdrift.Warehouse;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -19,7 +18,7 @@ namespace ModuleTests
         {
             if (useLocalDb)
             {
-                var dbPath = Path.Combine(BasePath, "Files\\DB\\Outlook.mdf");
+                var dbPath = Path.Combine(BasePath, "Files\\DB\\OutlookCalendar.mdf");
                 var conn = $"Data Source=(LocalDB)\\MSSQLLocalDB;AttachDbFilename={dbPath};Integrated Security=True";
                 var mssql = new Mssql(conn, App.ModuleName, App.Log);
                 App.Mssql.Connection = mssql.Connection;

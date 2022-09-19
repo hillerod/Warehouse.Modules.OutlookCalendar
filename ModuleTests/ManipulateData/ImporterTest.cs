@@ -1,30 +1,22 @@
 ﻿using Bygdrift.Tools.CsvTool;
 using Bygdrift.Tools.DataLakeTool;
-using Bygdrift.Warehouse;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Module.Refine;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-
-/// <summary>
-/// To use this test, fill out 'ModuleTests/appsettings.json'
-/// You can upload data directly to Azure, by stting saveToServer = true
-/// You can fetch data from webservice, by setting useDataFromService = true.
-/// It takes some time to fetch data each time from webservice, so download instead the data to local files to a folder: 'ModuleTests/Files/In/' and set useDataFromService=false.
-/// Download the datafiles by using: ModuleTests.Service.WebServiceTest
-/// </summary>
 
 namespace ModuleTests
 {
     [TestClass]
     public class ImporterTests : BaseTests
     {
-        public ImporterTests() : base(false)
+        const bool UseLocalDb = false;
+
+        public ImporterTests() : base(UseLocalDb)
         {
 
         }
@@ -54,10 +46,11 @@ namespace ModuleTests
         public async Task TestRunModuleFromDataLake()
         {
             var startClock = DateTime.Now;
-            bool saveToServer = true;
+            bool saveToDataLake = true;
+            bool saveToDB = true;
             var csvFiles = GetLocalCsvs(Path.Combine(BasePath, "Files", "In", "raw")).OrderBy(o => o.Date);
 
-            var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, true);
+            var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, saveToDataLake, saveToDB);
 
             foreach (var monthGroup in csvFiles.GroupBy(o => o.Date.ToString("yy-MM")))
             {
@@ -70,9 +63,9 @@ namespace ModuleTests
                 }
 
                 Trace.WriteLine($"\tBookings...");
-                var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, files, locationsRefinedCsv, saveToServer);
+                var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, files, locationsRefinedCsv, saveToDataLake, saveToDB);
                 Trace.WriteLine($"\tPartitions...");
-                await PartitionBookingsRefine.RefineAsync(App, bookingsRefinedCsv, saveToServer);
+                await PartitionBookingsRefine.RefineAsync(App, bookingsRefinedCsv, saveToDataLake, saveToDB);
                 var errors = App.Log.GetErrorsAndCriticals();
                 Assert.IsFalse(errors.Any());
             }

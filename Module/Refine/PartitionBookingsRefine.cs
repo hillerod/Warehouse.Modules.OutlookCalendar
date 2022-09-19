@@ -13,18 +13,18 @@ namespace Module.Refine
     {
         private static Csv csv = new();
 
-        public static async Task<Csv> RefineAsync(AppBase app, Csv bookings, bool saveToServer)
+        public static async Task<Csv> RefineAsync(AppBase app, Csv bookings, bool saveToDataLake, bool saveToDb)
         {
             if (bookings == null || bookings.RowCount == 0)
                 return default;
 
             CreateCsv(bookings);
 
-            if (saveToServer)
-            {
+            if (saveToDataLake)
                 await app.DataLake.SaveCsvAsync(csv, "Refined", "PartitionBookings.csv", FolderStructure.DatePath);
+
+            if (saveToDb)
                 app.Mssql.MergeCsv(csv, "PartitionBookings", "Id");
-            }
 
             return csv;
         }

@@ -46,9 +46,9 @@ namespace Module.AppFunctions
 
             if (files.Any())
             {
-                var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, true);
-                var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, files, locationsRefinedCsv, true);
-                await PartitionBookingsRefine.RefineAsync(App, bookingsRefinedCsv, true);
+                var locationsRefinedCsv = await LocationsRefine.RefineAsync(App, true, true);
+                var bookingsRefinedCsv = await BookingsRefine.RefineAsync(App, files, locationsRefinedCsv, true, true);
+                await PartitionBookingsRefine.RefineAsync(App, bookingsRefinedCsv, true, true);
 
                 for (int r = csvUnloadedFiles.RowLimit.Min; r <= csvUnloadedFiles.RowLimit.Max; r++)
                 {

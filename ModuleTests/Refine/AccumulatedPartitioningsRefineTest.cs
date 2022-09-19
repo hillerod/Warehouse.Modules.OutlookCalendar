@@ -17,7 +17,7 @@ namespace ModuleTests.Refine
             var update = new CsvUpdate(input, true, "Start", "End", "Mail");
             update.Csv.ToCsvFile(Path.Combine(FilesToDataLake.BasePath, "Files", "Out", "accuTest.csv"));
             var app = new AppBase();
-            var accumulatedBookingsRefineCsv = await PartitionBookingsRefine.RefineAsync(app, input, false);
+            var accumulatedBookingsRefineCsv = await PartitionBookingsRefine.RefineAsync(app, input, false, false);
             accumulatedBookingsRefineCsv.ToCsvFile(Path.Combine(FilesToDataLake.BasePath, "Files", "Out", "accuTest.csv"));
         }
 

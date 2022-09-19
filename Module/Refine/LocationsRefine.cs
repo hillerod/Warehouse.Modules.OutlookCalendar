@@ -1,5 +1,4 @@
-﻿
-using Bygdrift.Tools.CsvTool;
+﻿using Bygdrift.Tools.CsvTool;
 using Bygdrift.Tools.DataLakeTool;
 using Bygdrift.Warehouse;
 using System.Threading.Tasks;
@@ -10,14 +9,15 @@ namespace Module.Refine
     {
         private static readonly Csv csv = new();
 
-        public static async Task<Csv> RefineAsync(AppBase<Settings> app, bool saveToServer)
+        public static async Task<Csv> RefineAsync(AppBase<Settings> app, bool saveToDataLake, bool saveToDb)
         {
             CreateCsv();
-            if (saveToServer)
-            {
+            
+            if (saveToDataLake)
                 await app.DataLake.SaveCsvAsync(csv, "Static", "Locations.csv", FolderStructure.Path);
+
+            if (saveToDb)
                 app.Mssql.MergeCsv(csv, "Locations", "Mail", true, false);
-            }
 
             return csv;
         }
@@ -26,7 +26,6 @@ namespace Module.Refine
         {
             csv.AddHeaders("Mail,Capacity,Location,Level,Building,Name,Type,ShortName");
             csv.AddRows(new[] {
-                "rh-byraadssalen@hillerod.dk,,Ukendt,Ukendt,Ukendt,RH-Byrådssalen,Asset,DHH_RH-Byrådssalen",
                 "Det-Hvide-Hus-Belle-de-Boskoop@hillerod.dk,6,Trollesmindealle 27,1. sal,Det hvide hus,Belle de Boskob,Room,DHH1_Belle de Boskob",
                 "Det-Hvide-Hus-Cox-Orange@hillerod.dk,4,Trollesmindealle 27,1. sal,Det hvide hus,Cox Orange,Room,DHH1_Cox Orange",
                 "Det-Hvide-Hus-Graasten@hillerod.dk,8,Trollesmindealle 27,1. sal,Det hvide hus,Gråsten,Room,DHH1_Gråsten",

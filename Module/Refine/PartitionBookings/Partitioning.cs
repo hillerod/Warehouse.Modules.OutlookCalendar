@@ -36,6 +36,10 @@ namespace Module.Refine.PartitionBookings
 
                     AddPartition(roomId.ToString(), DateTime.Parse(from.ToString()), DateTime.Parse(to.ToString()), factor);
                 }
+                else
+                {
+
+                }
             }
         }
 

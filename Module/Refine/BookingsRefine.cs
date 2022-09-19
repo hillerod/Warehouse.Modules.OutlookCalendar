@@ -12,13 +12,18 @@ namespace Module.Refine
     {
         private static Csv csv;
 
-        public static async Task<Csv> RefineAsync(AppBase app, IEnumerable<KeyValuePair<DateTime, Csv>> csvFiles, Csv locations, bool saveToServer)
+        public static async Task<Csv> RefineAsync(AppBase app, IEnumerable<KeyValuePair<DateTime, Csv>> csvFiles, Csv locations, bool saveToDataLake, bool saveToDb)
         {
+            //var a = new Bygdrift.Tools.CsvTool.Csv()
             CreateCsv(csvFiles, locations);
-            if (saveToServer && csvFiles.Any())
+            if (csvFiles.Any())
             {
                 app.LoadedLocal = csvFiles.Max(o => o.Key);
-                await app.DataLake.SaveCsvAsync(csv, "Refined", "Bookings.csv", FolderStructure.DatePath);
+
+                if (saveToDataLake)
+                    await app.DataLake.SaveCsvAsync(csv, "Refined", "Bookings.csv", FolderStructure.DatePath);
+
+                if (saveToDb)
                 app.Mssql.MergeCsv(csv, "Bookings", "Id", false, false);
             }
             return csv;
@@ -30,8 +35,6 @@ namespace Module.Refine
             foreach (var item in csvFiles.OrderBy(o => o.Key))
             {
                 var ftpCsv = FilteredCsv(item.Value, locations);
-                //ftpCsv.Config.DateFormats.Add("yyyy-M-d H:m:sZ");
-
                 var toRow = csv.RowLimit.Max;
                 for (int fromRow = ftpCsv.RowLimit.Min; fromRow < ftpCsv.RowLimit.Max; fromRow++)
                 {
@@ -41,13 +44,13 @@ namespace Module.Refine
                     InsertDate(ftpCsv, 2, fromRow, 3, toRow);  //End
                     InsertValue(ftpCsv, 3, fromRow, 4, toRow);  //Participants
                     InsertValue(ftpCsv, 4, fromRow, 5, toRow);  //Name
-                    InsertValue(ftpCsv, 6, fromRow, 6, toRow);  //Capacity
-                    InsertValue(ftpCsv, 8, fromRow, 7, toRow, true);  //Mail
-                    //InsertFactor(csv, fromRow, 7, toRow);  //Factor
+                    var mail = InsertValue(ftpCsv, 8, fromRow, 7, toRow, true);  //Mail
+                    var capacity = locations.GetRowRecordsFirstMatch("Mail", mail, true, false)[2];
+                    csv.AddRecord(toRow,6, capacity);  //Capacity
                 }
             }
 
-            UpdateCapacity("Mail", "KANTINEN-MOEDECENTER@HILLEROD.DK", "Capacity", 100);
+            //UpdateCapacity("Mail", "KANTINEN-MOEDECENTER@HILLEROD.DK", "Capacity", 100);
             AddFactorCol("Factor", "Participants", "Capacity", 8);
             csv.RemoveRedundantRows("Id", false);
         }
@@ -62,13 +65,15 @@ namespace Module.Refine
             return res;
         }
 
-        private static void InsertId(Csv ftpCsv, int fromRow, int toCol, int toRow)
+        private static string InsertId(Csv ftpCsv, int fromRow, int toCol, int toRow)
         {
             //var start = ftpCsv.GetRecord<DateTime>(fromRow, 1).ToLocalTime().ToString("yyMMddhhmm");
             var start = DateTime.Parse(ftpCsv.GetRecord(fromRow, 1).ToString().Replace('.', ':')).ToLocalTime().ToString("yyMMddhhmm");
             //var end = DateTime.Parse(csv.GetRecord(1, fromRow).ToString().Replace('.', ':')).ToLocalTime().ToString("yyMMddhhmm");
             var mail = ftpCsv.GetRecord(fromRow, 8).ToString().ToUpper().Replace("@HILLEROD.DK", "");
-            csv.AddRecord(toRow, toCol, start + "-" + mail);
+            var res = start + "-" + mail;
+            csv.AddRecord(toRow, toCol, res);
+            return res;
         }
 
         private static void InsertDate(Csv ftpCsv, int fromCol, int fromRow, int toCol, int toRow)
@@ -80,10 +85,12 @@ namespace Module.Refine
             }
         }
 
-        private static void InsertValue(Csv ftpCsv, int fromCol, int fromRow, int toCol, int toRow, bool toUpper = false)
+        private static string InsertValue(Csv ftpCsv, int fromCol, int fromRow, int toCol, int toRow, bool toUpper = false)
         {
-            if (ftpCsv.TryGetRecord(fromRow, fromCol, out object val))
-                csv.AddRecord(toRow, toCol, toUpper ? val.ToString().ToUpper() : val);
+            var val = ftpCsv.GetRecord<string>(fromRow, fromCol);
+            var res = toUpper ? val.ToString().ToUpper() : val;
+            csv.AddRecord(toRow, toCol, res);
+            return res;
         }
 
         private static void UpdateCapacity(string headerNameLookup, string lookup, string writeIntoHeader, int capacity)
