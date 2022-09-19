@@ -52,7 +52,7 @@ namespace Module.AppFunctions
 
                 for (int r = csvUnloadedFiles.RowLimit.Min; r <= csvUnloadedFiles.RowLimit.Max; r++)
                 {
-                    csvUnloadedFiles.AddRecord(r, "Imported", App.LoadedUtc);
+                    csvUnloadedFiles.AddRecord(r, "Imported", DateTime.UtcNow);
                     csvUnloadedFiles.AddRecord(r, "IsImported", true);
                 }
 
