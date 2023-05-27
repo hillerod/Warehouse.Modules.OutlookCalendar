@@ -7,6 +7,8 @@ param moduleName string = 'OutlookCalendar'
 @description('')
 param fTPConnectionString string = 'host=SFTPS.xx.dk;port=22;user=xx;pass=xx;path=/ExchangeBookings;'
 
+@description('How often this module should digest data. This example runs each night at 1AM UTC. Read more here: https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer')
+param ScheduleExpression string = '0 0 1 * * *'
 
 @description('"Romance Standard Time" is Copenhagen. For other timezones, find them here: https://raw.githubusercontent.com/Bygdrift/Warehouse/master/Docs/TimeZoneIds.csv')
 param timeZoneId string = 'Romance Standard Time'
@@ -83,6 +85,10 @@ resource functionApp 'Microsoft.Web/sites@2021-02-01' = {
         {
           name: 'ModuleName'
           value: moduleName
+        }
+        {
+          name: 'ScheduleExpression'
+          value: ScheduleExpression
         }
         {
           name: 'TimeZoneId'

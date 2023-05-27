@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.6.11.53198",
-      "templateHash": "7329708440375750736"
+      "version": "0.11.1.770",
+      "templateHash": "3269722884800139977"
     }
   },
   "parameters": {
@@ -20,9 +20,16 @@
     },
     "fTPConnectionString": {
       "type": "secureString",
-      "defaultValue": "",
+      "defaultValue": "host=SFTPS.xx.dk;port=22;user=xx;pass=xx;path=/ExchangeBookings;",
       "metadata": {
-        "description": "The name of the module. Only use between 3-24 letters or numers, or the Warehouse can't function. The functionApp gets the same name followed by the \"-resourceGroup.id\". The modulename is hard to change later, so try to keep it static. It is used in dataLake and databse as an identifier of data that comes from this app"
+        "description": ""
+      }
+    },
+    "ScheduleExpression": {
+      "type": "string",
+      "defaultValue": "0 0 1 * * *",
+      "metadata": {
+        "description": "How often this module should digest data. This example runs each night at 1AM UTC. Read more here: https://docs.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer"
       }
     },
     "timeZoneId": {
@@ -92,6 +99,10 @@
             {
               "name": "ModuleName",
               "value": "[parameters('moduleName')]"
+            },
+            {
+              "name": "ScheduleExpression",
+              "value": "[parameters('ScheduleExpression')]"
             },
             {
               "name": "TimeZoneId",
